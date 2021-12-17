@@ -1,0 +1,57 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           flow-solver
+version:        0.0.0
+description:    Please see the README on GitHub at <git@github.com:deji725/PFP-FlowSolver>
+author:         Deji Oyerinde & Kidus Mulu
+maintainer:     oko2107@columbi.edu, km3533@columbia.edu
+copyright:      2021 Deji and Kidus
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_flow_solver
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , vector ==0.12.3.1
+  default-language: Haskell2010
+
+executable flow-solver-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_flow_solver
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -Wall
+  build-depends:
+      base >=4.7 && <5
+    , flow-solver
+    , vector ==0.12.3.1
+  default-language: Haskell2010
+
+test-suite flow-solver-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_flow_solver
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -Wall
+  build-depends:
+      base >=4.7 && <5
+    , flow-solver
+    , vector ==0.12.3.1
+  default-language: Haskell2010

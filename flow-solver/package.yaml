@@ -1,0 +1,48 @@
+name:                flow-solver
+author:              "Deji Oyerinde & Kidus Mulu"
+maintainer:          "oko2107@columbi.edu, km3533@columbia.edu"
+copyright:           "2021 Deji and Kidus"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Parallel flow-free solver
+# category:            Game solver
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <git@github.com:deji725/PFP-FlowSolver>
+
+dependencies:
+- base >= 4.7 && < 5
+- vector == 0.12.3.1
+
+library:
+  source-dirs: src
+
+executables:
+  flow-solver-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -Wall
+    # - -with-rtsopts=-N
+    dependencies:
+    - flow-solver
+
+tests:
+  flow-solver-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -Wall
+    # - -with-rtsopts=-N
+    dependencies:
+    - flow-solver
