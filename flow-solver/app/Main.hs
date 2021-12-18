@@ -22,20 +22,21 @@ main = do
   let v = V.fromList (head ls)
   let matrix = V.fromList $ map V.fromList ls
   let colors = S.delete '0' $ S.fromList $ concat ls
+  print $ getEnds matrix
   print  $ isSolved matrix colors
   return ()
   -- mapM_ print v
 
+
 isSolved :: Board -> S.Set Char -> Bool
 isSolved board colors
     | V.any (\v -> V.any (not . isUpper) v) board = False -- all places filled
-    | M.size ends /= S.size colors = False                -- all colors have ends
-    | not (all (\a -> length a /= 2) ends) = False
+    | M.size ends /= S.size colors = False               -- all colors have ends
+    | any (\a -> length a /= 2) ends = False
     | otherwise = all color_has_path colors
     where ends = getEnds board
           color_has_path c = validPath board strt end
             where (strt:end:_) = ends M.! c
-
 
 getEnds :: Board -> M.Map Char [(Int,Int)]
 getEnds board = foldl (helper) M.empty [0.. (V.length $ board)-1] 
@@ -46,19 +47,19 @@ getEnds board = foldl (helper) M.empty [0.. (V.length $ board)-1]
                   else
                     m
                   where 
-                    is_end = (length $ filter ((==) (board ! i !? j)) (neighbors (i,j) board)) == 1
+                    is_end = (length $ filter ((==) (board ! i !? j)) (neighbors (i,j) board)) <= 1
 
 validPath :: Board -> (Int,Int) -> (Int,Int) -> Bool
-validPath board (i,j) end = helper (fst $ head first_step) (i,j)
+validPath board (i,j) end = helper (fst $ head first_step) (i,j) 
   where 
         cur_char = board ! i ! j
         first_step = filter (\(_,c) -> c == cur_char) (neighbors_idxs (i,j) board)
-        helper cur_pos p 
+        helper cur_pos p  
                 | cur_pos == end = True
                 | length nextStep /= 1 = False
-                | otherwise = helper (fst $ head nextStep) cur_pos
+                | otherwise = helper (fst $ head nextStep) cur_pos 
           where nextStep = 
-                  filter (\(idx, c) -> (c == cur_char) && idx /= p) (neighbors_idxs (i,j) board)
+                  filter (\(idx, c) -> (c == cur_char) && idx /= p) (neighbors_idxs cur_pos board)
 
 
 
