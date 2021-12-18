@@ -22,20 +22,18 @@ main = do
   let v = V.fromList (head ls)
   let matrix = V.fromList $ map V.fromList ls
   let colors = S.delete '0' $ S.fromList $ concat ls
+  let ends = M.delete '0' $ getEnds matrix
   print $ getEnds matrix
-  print  $ isSolved matrix colors
+  print  $ isSolved matrix colors ends
   return ()
   -- mapM_ print v
 
 
-isSolved :: Board -> S.Set Char -> Bool
-isSolved board colors
+isSolved :: Board -> S.Set Char -> M.Map Char [(Int,Int)] -> Bool
+isSolved board colors ends
     | V.any (\v -> V.any (not . isUpper) v) board = False -- all places filled
-    | M.size ends /= S.size colors = False               -- all colors have ends
-    | any (\a -> length a /= 2) ends = False
     | otherwise = all color_has_path colors
-    where ends = getEnds board
-          color_has_path c = validPath board strt end
+    where color_has_path c = validPath board strt end
             where (strt:end:_) = ends M.! c
 
 getEnds :: Board -> M.Map Char [(Int,Int)]
