@@ -26,8 +26,8 @@ main = do
   let matrix = V.fromList $ map V.fromList ls
   let colors = S.delete '0' $ S.fromList $ concat ls
   let ends = M.delete '0' $ getEnds matrix
-  print $ getEnds matrix
-  print  $ isSolved matrix colors ends
+  -- print  $ isSolved matrix colors ends
+  print $ solver matrix colors ends
   return ()
   {-
    - nxt_color = color with min moves left
@@ -37,18 +37,23 @@ main = do
    -          if isSolved cur : return cur
   -}
   -- mapM_ print v
--- solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
--- solver board colors ends  = helper board ends
---   where 
---         helper cur_board fronts 
---           | isSolved cur_board colors ends = Just cur_board 
---           | M.size possible_moves == 0 = Nothing
---           | otherwise = case filter isJust sub_solutions of
---                           [] -> Nothing
---                           (sol:_) -> sol
---           -- what if one of the items in the map has an empty value?
---           where
---                 sub_solutions = map (\pos -> helper (newBoard cToMove pos) (newFronts cToMove pos)) nextMoves 
+solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+solver board colors ends  = helper board ends
+  where 
+        helper cur_board fronts 
+          | isSolved cur_board colors ends = Just cur_board 
+          | M.size nextMoves == 0 = Nothing
+          | otherwise = case filter isJust sub_sols of
+                          [] -> Nothing
+                          (s:_) -> s
+          where
+            nextMoves = getNextMoves cur_board fronts
+            (best_pos@(i,j), moves) = getShortestMove nextMoves
+            best_char = cur_board ! i ! j
+            sub_sols = map (\nxt -> helper 
+                                      (makeMove cur_board best_pos nxt) 
+                                      (advanceFront fronts best_char best_pos nxt)) 
+                        moves
 
 
 advanceFront :: Fronts -> Char -> Pos -> Pos -> Fronts
