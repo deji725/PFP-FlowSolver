@@ -2,7 +2,7 @@ module Main where
 
 import Lib
 
-import System.IO(readFile, hPutStrLn)
+import System.IO(readFile)
 import System.Environment(getArgs)
 import Data.Maybe
 import Data.Char(isUpper)
@@ -26,6 +26,13 @@ main = do
   print $ getEnds matrix
   print  $ isSolved matrix colors ends
   return ()
+  {-
+   - nxt_color = color with min moves left
+   - solve index:
+   -      for all possible moves in (neighbor_idx nxt_color)
+   -          cur = solve nxt_idx
+   -          if isSolved cur : return cur
+  -}
   -- mapM_ print v
 
 
