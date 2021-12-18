@@ -28,5 +28,5 @@ isSolved board = True
 isSolverHelper :: Board -> M.Map Char [(Int,Int)]
 isSolverHelper board = foldl (helper) M.empty [0.. (V.length $ board)-1] 
     where helper boardMap i = foldl (helper2) boardMap [0.. V.length (board ! i) - 1]
-	    where helper2 boardMap j =  M.insertWith (++) (board ! i ! j) [(i,j)] boardMap
-
+            where helper2 m j =  M.insertWith (++) (board ! i ! j) [(i,j)] m
+                                        
