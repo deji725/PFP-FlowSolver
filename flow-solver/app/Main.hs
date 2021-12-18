@@ -5,14 +5,17 @@ import Lib
 import System.IO(readFile)
 import System.Environment(getArgs)
 import Data.Maybe
-import Data.Char(isUpper)
-import Data.Vector((!?),(!))
+import Data.Char(isUpper, toUpper)
+import Data.Vector((!?),(!), (//))
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 
 type Board = (V.Vector (V.Vector Char))
+type Fronts = M.Map Char [Pos]
+type Ends   = Fronts
+type Pos    = (Int,Int)
 
 main :: IO ()
 main = do
@@ -34,25 +37,57 @@ main = do
    -          if isSolved cur : return cur
   -}
   -- mapM_ print v
-solver :: Board -> M.Map Char [(Int,Int)] -> Maybe Board
-solver board ends = helper board ends
-  where 
-        helper board fronts = Nothing 
-          where
-                possible_moves = M.foldl (foldl (\m pos -> M.insert pos (getMoves pos) m)) M.empty fronts  
-                --getMoves :: (Int,Int) -> [((Int,Int),Char)]
-                getMoves (i,j) =  map fst $ filter (\(pos, ch) -> (ch == '0' || ch == cur_char) ) $ neighbors_idxs  (i,j) board
-                 where cur_char = board ! i ! j
+-- solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+-- solver board colors ends  = helper board ends
+--   where 
+--         helper cur_board fronts 
+--           | isSolved cur_board colors ends = Just cur_board 
+--           | M.size possible_moves == 0 = Nothing
+--           | otherwise = case filter isJust sub_solutions of
+--                           [] -> Nothing
+--                           (sol:_) -> sol
+--           -- what if one of the items in the map has an empty value?
+--           where
+--                 sub_solutions = map (\pos -> helper (newBoard cToMove pos) (newFronts cToMove pos)) nextMoves 
 
 
-isSolved :: Board -> S.Set Char -> M.Map Char [(Int,Int)] -> Bool
+advanceFront :: Fronts -> Char -> Pos -> Pos -> Fronts
+advanceFront fronts c old new = 
+  M.insert c (new:(filter ((/=) old) $ fronts M.! c)) fronts
+
+makeMove :: Board -> Pos -> Pos -> Board
+makeMove board (b1,b2) (a1,a2) = replaceBoard (b1,b2) tmp (toUpper cur_char)
+  where cur_char = board ! b1 ! b2
+        replaceBoard (i,j) brd value = brd // [(i, brd ! i // [(j, value)])]
+        tmp = replaceBoard (a1,a2) board cur_char
+
+
+
+getShortestMove :: M.Map Pos [Pos] -> (Pos, [Pos])
+getShortestMove all_moves = 
+  M.foldlWithKey getMinMoves ((0,0), replicate 5 (-1,-1)) all_moves
+    where getMinMoves cur_min@(_, min_moves) cur_pos cur_moves = 
+            if length min_moves > length cur_moves then (cur_pos, cur_moves) 
+            else cur_min
+
+
+-- Gets all the possible moves on the board
+getNextMoves :: Board -> Fronts -> M.Map Pos [Pos]
+getNextMoves board fronts = 
+  M.foldl (foldl (\m pos -> M.insert pos (getMoves pos) m)) M.empty fronts  
+  where getMoves (i,j) =  map fst $ --getMoves :: Pos -> [(Pos,Char)]
+                      filter (\(_, ch) -> (ch == '0' || ch == cur_char) ) 
+                      $ neighbors_idxs  (i,j) board
+          where cur_char = board ! i ! j
+
+isSolved :: Board -> S.Set Char -> M.Map Char [Pos] -> Bool
 isSolved board colors ends
     | V.any (\v -> V.any (not . isUpper) v) board = False -- all places filled
     | otherwise = all color_has_path colors
     where color_has_path c = validPath board strt end
             where (strt:end:_) = ends M.! c
 
-getEnds :: Board -> M.Map Char [(Int,Int)]
+getEnds :: Board -> M.Map Char [Pos]
 getEnds board = foldl (helper) M.empty [0.. (V.length $ board)-1] 
   where helper boardMap i = foldl (helper2) boardMap [0.. V.length (board ! i) - 1]
           where helper2 m j = 
@@ -63,7 +98,7 @@ getEnds board = foldl (helper) M.empty [0.. (V.length $ board)-1]
                   where 
                     is_end = (length $ filter ((==) (board ! i !? j)) (neighbors (i,j) board)) <= 1
 
-validPath :: Board -> (Int,Int) -> (Int,Int) -> Bool
+validPath :: Board -> Pos -> Pos -> Bool
 validPath board (i,j) end = helper (fst $ head first_step) (i,j) 
   where 
         cur_char = board ! i ! j
@@ -77,12 +112,12 @@ validPath board (i,j) end = helper (fst $ head first_step) (i,j)
 
 
 
-neighbors_idxs :: (Int,Int) -> Board -> [((Int,Int), Char)]
+neighbors_idxs :: Pos -> Board -> [(Pos, Char)]
 neighbors_idxs (i,j) board = map (\(p,m) -> (p, fromJust m)) $ filter (\a -> isJust (snd a)) tmp
  where tmp = zip ([(i, j-1), (i-1, j), (i,j+1), (i+1,j)]) (neighbors (i,j) board)
 
 -- returns the neigbors of the color at (i,j)
-neighbors :: (Int,Int) -> Board -> [Maybe Char]
+neighbors :: Pos -> Board -> [Maybe Char]
 neighbors (i,j) board = [left, up, right, down]
   where left = board  ! i !? (j-1)
         right = board ! i !? (j+1)
