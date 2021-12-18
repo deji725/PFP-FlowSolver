@@ -34,6 +34,15 @@ main = do
    -          if isSolved cur : return cur
   -}
   -- mapM_ print v
+solver :: Board -> M.Map Char [(Int,Int)] -> Maybe Board
+solver board ends = helper board ends
+  where 
+        helper board fronts = Nothing 
+          where
+                possible_moves = M.foldl (foldl (\m pos -> M.insert pos (getMoves pos) m)) M.empty fronts  
+                --getMoves :: (Int,Int) -> [((Int,Int),Char)]
+                getMoves (i,j) =  map fst $ filter (\(pos, ch) -> (ch == '0' || ch == cur_char) ) $ neighbors_idxs  (i,j) board
+                 where cur_char = board ! i ! j
 
 
 isSolved :: Board -> S.Set Char -> M.Map Char [(Int,Int)] -> Bool
