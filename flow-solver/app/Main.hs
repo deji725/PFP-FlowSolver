@@ -37,15 +37,15 @@ main = do
    -          if isSolved cur : return cur
   -}
   -- mapM_ print v
-solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+solver :: Board -> S.Set Char -> M.Map Char [Pos] -> (Maybe Board, String)
 solver board colors ends  = helper board ends
   where 
         helper cur_board fronts 
-          | isSolved cur_board colors ends = Just cur_board 
-          | M.size nextMoves == 0 = Nothing
-          | otherwise = case filter isJust sub_sols of
-                          [] -> Nothing
-                          (s:_) -> s
+          | isSolved cur_board colors ends = (Just cur_board, "case 1")
+          | M.size nextMoves == 0 = (Nothing, "case 2")
+          | otherwise = case filter (isJust.fst) sub_sols of
+                          [] -> (Nothing, "case 3")
+                          ((s,m):_) -> (s, "case 4 " ++ m)
           where
             nextMoves = getNextMoves cur_board fronts
             (best_pos@(i,j), moves) = getShortestMove nextMoves
