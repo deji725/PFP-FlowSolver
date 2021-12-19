@@ -2,7 +2,7 @@ module Main where
 
 import Lib
 
-import System.IO(readFile)
+-- import System.IO(readFile)
 import System.Environment(getArgs)
 import Data.Maybe
 import Data.Char(isUpper, toUpper)
@@ -22,34 +22,25 @@ main = do
   [filename] <- getArgs
   contents <- readFile filename
   let ls = lines contents -- line = "00gh0"
-  let v = V.fromList (head ls)
   let matrix = V.fromList $ map V.fromList ls
   let colors = S.delete '0' $ S.fromList $ concat ls
   let ends = M.delete '0' $ getEnds matrix
   -- print  $ isSolved matrix colors ends
-  let (sol,m) = solver matrix colors ends
+  let sol = solver matrix colors ends
   putStr $ show sol
   -- putStr $ snd $ solver matrix colors ends
   return ()
-  {-
-   - nxt_color = color with min moves left
-   - solve index:
-   -      for all possible moves in (neighbor_idx nxt_color)
-   -          cur = solve nxt_idx
-   -          if isSolved cur : return cur
-  -}
-  -- mapM_ print v
-solver :: Board -> S.Set Char -> M.Map Char [Pos] -> (Maybe Board, String)
+
+solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
 solver board colors ends  = helper board ends
   where 
         helper cur_board fronts 
-          | isSolved cur_board colors ends = (Just cur_board, "case 1")
-          | M.size nextMoves == 0 = (Nothing, (show cur_board))
-          | length moves == 0 = let (s,m) = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
-                                in (s, "case new " ++ m)
-          | otherwise = case filter (isJust.fst) sub_sols of
-                          [] -> (Nothing, "case 3 \n" ++ (concat (map snd sub_sols)))
-                          ((s,m):_) -> (s, "case 4 " ++ m)
+          | isSolved cur_board colors ends = Just cur_board
+          | M.size nextMoves == 0 = Nothing
+          | length moves == 0 = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
+          | otherwise = case filter isJust sub_sols of
+                          [] -> Nothing
+                          (s:_) -> s
           where
             nextMoves = getNextMoves cur_board fronts
             (best_pos@(i,j), moves) = getShortestMove nextMoves
@@ -89,7 +80,7 @@ getNextMoves board fronts =
                       $ neighbors_idxs  (i,j) board
           where cur_char = board ! i ! j
         helper m l = if all ((==) (head l)) l then M.insert (head l) [] m
-                     else foldl (\m pos -> M.insert pos (getMoves pos) m) m l
+                     else foldl (\m' pos -> M.insert pos (getMoves pos) m') m l
 
 isSolved :: Board -> S.Set Char -> M.Map Char [Pos] -> Bool
 isSolved board colors ends
