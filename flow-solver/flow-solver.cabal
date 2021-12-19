@@ -27,6 +27,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , parallel ==3.2.2.0
     , vector ==0.12.3.1
   default-language: Haskell2010
 
@@ -36,11 +37,12 @@ executable flow-solver-exe
       Paths_flow_solver
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -Wall
+  ghc-options: -O2 -threaded -rtsopts -eventlog -Wall
   build-depends:
       base >=4.7 && <5
     , containers
     , flow-solver
+    , parallel ==3.2.2.0
     , vector ==0.12.3.1
   default-language: Haskell2010
 
@@ -56,5 +58,6 @@ test-suite flow-solver-test
       base >=4.7 && <5
     , containers
     , flow-solver
+    , parallel ==3.2.2.0
     , vector ==0.12.3.1
   default-language: Haskell2010
