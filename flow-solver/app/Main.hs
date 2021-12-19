@@ -27,7 +27,9 @@ main = do
   let colors = S.delete '0' $ S.fromList $ concat ls
   let ends = M.delete '0' $ getEnds matrix
   -- print  $ isSolved matrix colors ends
-  print $ solver matrix colors ends
+  let (sol,m) = solver matrix colors ends
+  putStr $ show sol
+  -- putStr $ snd $ solver matrix colors ends
   return ()
   {-
    - nxt_color = color with min moves left
@@ -42,18 +44,20 @@ solver board colors ends  = helper board ends
   where 
         helper cur_board fronts 
           | isSolved cur_board colors ends = (Just cur_board, "case 1")
-          | M.size nextMoves == 0 = (Nothing, "case 2")
+          | M.size nextMoves == 0 = (Nothing, (show cur_board))
+          | length moves == 0 = let (s,m) = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
+                                in (s, "case new " ++ m)
           | otherwise = case filter (isJust.fst) sub_sols of
-                          [] -> (Nothing, "case 3")
+                          [] -> (Nothing, "case 3 \n" ++ (concat (map snd sub_sols)))
                           ((s,m):_) -> (s, "case 4 " ++ m)
           where
             nextMoves = getNextMoves cur_board fronts
             (best_pos@(i,j), moves) = getShortestMove nextMoves
             best_char = cur_board ! i ! j
-            sub_sols = map (\nxt -> helper 
-                                      (makeMove cur_board best_pos nxt) 
+            sub_problems = map (\nxt -> ((makeMove cur_board best_pos nxt), 
                                       (advanceFront fronts best_char best_pos nxt)) 
-                        moves
+                                       ) moves
+            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems
 
 
 advanceFront :: Fronts -> Char -> Pos -> Pos -> Fronts
@@ -79,11 +83,13 @@ getShortestMove all_moves =
 -- Gets all the possible moves on the board
 getNextMoves :: Board -> Fronts -> M.Map Pos [Pos]
 getNextMoves board fronts = 
-  M.foldl (foldl (\m pos -> M.insert pos (getMoves pos) m)) M.empty fronts  
+  M.foldl helper M.empty fronts  
   where getMoves (i,j) =  map fst $ --getMoves :: Pos -> [(Pos,Char)]
                       filter (\(_, ch) -> (ch == '0' || ch == cur_char) ) 
                       $ neighbors_idxs  (i,j) board
           where cur_char = board ! i ! j
+        helper m l = if all ((==) (head l)) l then M.insert (head l) [] m
+                     else foldl (\m pos -> M.insert pos (getMoves pos) m) m l
 
 isSolved :: Board -> S.Set Char -> M.Map Char [Pos] -> Bool
 isSolved board colors ends
