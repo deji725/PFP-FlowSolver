@@ -4,10 +4,12 @@ import Lib
 
 -- import System.IO(readFile)
 import System.Environment(getArgs)
+import System.Exit(die)
 import Data.Maybe
+import Data.List
 import Data.Char(isUpper, toUpper)
 import Data.Vector((!?),(!), (//))
-import Control.Parallel.Strategies(using, parList, rseq, rpar)
+import Control.Parallel.Strategies(using, parList, rseq)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -18,22 +20,49 @@ type Fronts = M.Map Char [Pos]
 type Ends   = Fronts
 type Pos    = (Int,Int)
 
+myShow :: Board -> String
+myShow board = concat $ intersperse "\n" $ V.toList $ V.map (V.toList) board
+
 main :: IO ()
 main = do
-  [filename] <- getArgs
+  args <- getArgs
+  (filename, parallelize) <-
+    case args of 
+      [fn, p] -> return (fn,p)
+      _   -> die "Usage: flow-solver [filename] [par|seq]"
+  let solver = if parallelize == "par" then par_solver else seq_solver
+
   contents <- readFile filename
-  let ls = lines contents -- line = "00gh0"
+  let ls = lines contents
   let matrix = V.fromList $ map V.fromList ls
   let colors = S.delete '0' $ S.fromList $ concat ls
   let ends = M.delete '0' $ getEnds matrix
-  -- print  $ isSolved matrix colors ends
   let sol = solver matrix colors ends
-  putStr $ show sol
-  -- putStr $ snd $ solver matrix colors ends
-  return ()
+  case sol of 
+    Nothing -> putStrLn "The board does not have a solution"
+    Just s  -> putStrLn $ myShow s
 
-solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
-solver board colors ends  = helper board ends
+seq_solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+seq_solver board colors ends  = helper board ends
+  where 
+        helper cur_board fronts 
+          | isSolved cur_board colors ends = Just cur_board
+          | M.size nextMoves == 0 = Nothing
+          | length moves == 0 = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
+          | otherwise = case filter isJust sub_sols of
+                          [] -> Nothing
+                          (s:_) -> s
+          where
+            nextMoves = getNextMoves cur_board fronts
+            (best_pos@(i,j), moves) = getShortestMove nextMoves
+            best_char = cur_board ! i ! j
+            sub_problems = map (\nxt -> ((makeMove cur_board best_pos nxt), 
+                                      (advanceFront fronts best_char best_pos nxt)) 
+                                       ) moves
+            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems
+
+par_solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+par_solver board colors ends  = helper board ends
   where 
         helper cur_board fronts 
           | isSolved cur_board colors ends = Just cur_board
