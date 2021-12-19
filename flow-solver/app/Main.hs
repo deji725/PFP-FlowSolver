@@ -7,6 +7,7 @@ import System.Environment(getArgs)
 import Data.Maybe
 import Data.Char(isUpper, toUpper)
 import Data.Vector((!?),(!), (//))
+import Control.Parallel.Strategies(using, parList, rseq, rpar)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -48,7 +49,7 @@ solver board colors ends  = helper board ends
             sub_problems = map (\nxt -> ((makeMove cur_board best_pos nxt), 
                                       (advanceFront fronts best_char best_pos nxt)) 
                                        ) moves
-            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems
+            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems `using` parList rseq
 
 
 advanceFront :: Fronts -> Char -> Pos -> Pos -> Fronts

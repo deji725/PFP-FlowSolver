@@ -1,4 +1,5 @@
 import time
+import sys
 import numpy
 
 def main():
@@ -12,8 +13,9 @@ def main():
                         ['0', '0', '0', '0', '0','0'],
                         ['0', 'g', '0', '0', '0','o']])
         '''
-        with open('regular_9x9_01.txt') as g:
-            data = [line.strip().split() for line in g.readlines()]
+        
+        with open(sys.argv[1]) as g:
+            data = [[j for j in line.strip()] for line in g.readlines()]
         board_of_colours =  numpy.array([numpy.array(xi) for xi in data])
         print(board_of_colours)
         # save the initial board of colours as the head of our tree
@@ -23,10 +25,15 @@ def main():
         start = time.time()
         solved_board = recurse_solve(board_of_colours, start)
         print('time taken was {} seconds'.format(time.time()-start))
+        with open(sys.argv[2], 'w') as s:
+            for i in range(solved_board.shape[0]):
+                strs = ''
+                for j in range(solved_board.shape[1]):
+                    strs += solved_board[i,j]
+                s.write("{}\n".format(strs))
         print(solved_board)
     except Exception as e:
-        print(e)
-
+        raise e
 def recurse_solve(board, start_time):
     if time.time()-start_time > 10:
         start_time = time.time()
