@@ -9,7 +9,8 @@ import Data.Maybe
 import Data.List
 import Data.Char(isUpper, toUpper)
 import Data.Vector((!?),(!), (//))
-import Control.Parallel.Strategies(using, parList, rseq)
+import Control.Parallel.Strategies(using, parListNth, rseq)
+import Data.Function(on)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -26,11 +27,12 @@ myShow board = concat $ intersperse "\n" $ V.toList $ V.map (V.toList) board
 main :: IO ()
 main = do
   args <- getArgs
-  (filename, parallelize) <-
+  (filename, parallelize, depth) <-
     case args of 
-      [fn, p] -> return (fn,p)
+      [fn, p] -> return (fn,p,10) -- default depth of 10
+      [fn, p, d] -> return (fn,p, read d :: Int)
       _   -> die "Usage: flow-solver [filename] [par|seq]"
-  let solver = if parallelize == "par" then par_solver else seq_solver
+  let solver = if parallelize == "par" then par_solver depth else seq_solver
 
   contents <- readFile filename
   let ls = lines contents
@@ -61,24 +63,46 @@ seq_solver board colors ends  = helper board ends
                                        ) moves
             sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems
 
-par_solver :: Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
-par_solver board colors ends  = helper board ends
+par_solver :: Int -> Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
+par_solver depth board colors ends  = helper board ends depth
   where 
-        helper cur_board fronts 
+        helper cur_board fronts dpth
           | isSolved cur_board colors ends = Just cur_board
-          | M.size nextMoves == 0 = Nothing
-          | length moves == 0 = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
+          | length sub_problems == 0 = Nothing
+          | length sub_problems == 1 = let (b,f) = head sub_problems in helper b f dpth
           | otherwise = case filter isJust sub_sols of
                           [] -> Nothing
                           (s:_) -> s
           where
-            nextMoves = getNextMoves cur_board fronts
-            (best_pos@(i,j), moves) = getShortestMove nextMoves
-            best_char = cur_board ! i ! j
-            sub_problems = map (\nxt -> ((makeMove cur_board best_pos nxt), 
-                                      (advanceFront fronts best_char best_pos nxt)) 
-                                       ) moves
-            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems `using` parList rseq
+            sub_problems = getSubProblems cur_board fronts
+            subSubProblemsSizes = getSubSubProblemsSize sub_problems
+            -- numOfChildren :: [((Board,Front), Int, n)]
+            numOfChildren = sortBy (compare `on` (\(_,a,_)->a)) $ zip3 sub_problems subSubProblemsSizes [1..]
+            sub_sols = 
+              if dpth > 0 then 
+                map helper_recurse numOfChildren `using` parListNth ((length numOfChildren) - 1) rseq
+              else 
+                map helper_recurse numOfChildren 
+            helper_recurse ((nxt_move,nxt_fronts),_,n) = helper nxt_move nxt_fronts 
+              (if n == length numOfChildren then dpth-1 else 0)
+
+
+-- maybe give back the length of all possible moves in the board if we make this
+-- move
+getSubSubProblemsSize :: [(Board, Fronts)] -> [Int]
+getSubSubProblemsSize sub_problems =
+  map (\(b,f) -> foldl (\s l -> s + (length l)) 0 (getNextMoves b f) ) sub_problems
+  -- map (\(b,f) -> length $ getSubProblems b f) sub_problems
+
+getSubProblems :: Board -> Fronts -> [(Board, Fronts)]
+getSubProblems board fronts 
+  | length nextMoves == 0 = []
+  | length moves == 0     = [(makeMove board best_pos best_pos, M.delete best_char fronts)]
+  | otherwise = map (\nxt -> ((makeMove board best_pos nxt), (advanceFront fronts best_char best_pos nxt)) ) moves
+  where nextMoves = getNextMoves board fronts
+        (best_pos@(i,j), moves) = getShortestMove nextMoves
+        best_char = board ! i ! j
+
 
 
 advanceFront :: Fronts -> Char -> Pos -> Pos -> Fronts
@@ -90,8 +114,6 @@ makeMove board (b1,b2) (a1,a2) = replaceBoard (b1,b2) tmp (toUpper cur_char)
   where cur_char = board ! b1 ! b2
         replaceBoard (i,j) brd value = brd // [(i, brd ! i // [(j, value)])]
         tmp = replaceBoard (a1,a2) board cur_char
-
-
 
 getShortestMove :: M.Map Pos [Pos] -> (Pos, [Pos])
 getShortestMove all_moves = 
