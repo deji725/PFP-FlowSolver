@@ -9,8 +9,7 @@ import Data.Maybe
 import Data.List
 import Data.Char(isUpper, toUpper)
 import Data.Vector((!?),(!), (//))
-import Control.Parallel.Strategies(using, parListNth, rseq)
-import Data.Function(on)
+import Control.Parallel.Strategies(using, parList, rseq)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -75,16 +74,12 @@ par_solver depth board colors ends  = helper board ends depth
                           (s:_) -> s
           where
             sub_problems = getSubProblems cur_board fronts
-            subSubProblemsSizes = getSubSubProblemsSize sub_problems
-            -- numOfChildren :: [((Board,Front), Int, n)]
-            numOfChildren = sortBy (compare `on` (\(_,a,_)->a)) $ zip3 sub_problems subSubProblemsSizes [1..]
             sub_sols = 
               if dpth > 0 then 
-                map helper_recurse numOfChildren `using` parListNth ((length numOfChildren) - 1) rseq
+                map helper_recurse sub_problems `using` parList rseq
               else 
-                map helper_recurse numOfChildren 
-            helper_recurse ((nxt_move,nxt_fronts),_,n) = helper nxt_move nxt_fronts 
-              (if n == length numOfChildren then dpth-1 else 0)
+                map helper_recurse sub_problems 
+            helper_recurse (nxt_move,nxt_fronts) = helper nxt_move nxt_fronts (dpth `quot` (length sub_problems))
 
 
 -- maybe give back the length of all possible moves in the board if we make this
