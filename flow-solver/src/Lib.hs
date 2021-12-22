@@ -26,7 +26,8 @@ seq_solver board colors ends  = helper board ends
         helper cur_board fronts 
           | isSolved cur_board colors ends = Just cur_board
           | M.size nextMoves == 0 = Nothing
-          | length moves == 0 = helper (makeMove cur_board best_pos best_pos) (M.delete best_char fronts)
+          | length moves == 0 = helper (makeMove cur_board best_pos best_pos) 
+                                    (M.delete best_char fronts)
           | otherwise = case filter isJust sub_sols of
                           [] -> Nothing
                           (s:_) -> s
@@ -35,9 +36,11 @@ seq_solver board colors ends  = helper board ends
             (best_pos@(i,j), moves) = getShortestMove nextMoves
             best_char = cur_board ! i ! j
             sub_problems = map (\nxt -> ((makeMove cur_board best_pos nxt), 
-                                      (advanceFront fronts best_char best_pos nxt)) 
+                                      (advanceFront fronts best_char 
+                                          best_pos nxt)) 
                                        ) moves
-            sub_sols = map (\(nxt_move, nxt_fronts) -> helper nxt_move nxt_fronts) sub_problems
+            sub_sols = map (\(nxt_move, nxt_fronts) -> 
+                            helper nxt_move nxt_fronts) sub_problems
 
 par_solver :: Int -> Board -> S.Set Char -> M.Map Char [Pos] -> Maybe Board
 par_solver depth board colors ends  = helper board ends depth
@@ -45,7 +48,8 @@ par_solver depth board colors ends  = helper board ends depth
         helper cur_board fronts dpth
           | isSolved cur_board colors ends = Just cur_board
           | length sub_problems == 0 = Nothing
-          | length sub_problems == 1 = let (b,f) = head sub_problems in helper b f dpth
+          | length sub_problems == 1 = let (b,f) = head sub_problems 
+                                        in helper b f dpth
           | otherwise = case filter isJust sub_sols of
                           [] -> Nothing
                           (s:_) -> s
@@ -53,13 +57,16 @@ par_solver depth board colors ends  = helper board ends depth
             sub_problems = getSubProblems cur_board fronts
             subSubProblemsSizes = getSubSubProblemsSize sub_problems
             -- numOfChildren :: [((Board,Front), Int, n)]
-            numOfChildren = sortBy (compare `on` (\(_,a,_)->a)) $ zip3 sub_problems subSubProblemsSizes [1..]
+            numOfChildren = sortBy (compare `on` (\(_,a,_)->a)) $ 
+                              zip3 sub_problems subSubProblemsSizes [1..]
             sub_sols = 
               if dpth > 0 then 
-                map helper_recurse numOfChildren `using` parListNth ((length numOfChildren) - 1) rseq
+                map helper_recurse numOfChildren 
+                  `using` parListNth ((length numOfChildren) - 1) rseq
               else 
                 map helper_recurse numOfChildren 
-            helper_recurse ((nxt_move,nxt_fronts),_,n) = helper nxt_move nxt_fronts 
+            helper_recurse ((nxt_move,nxt_fronts),_,n) = helper nxt_move 
+                                                            nxt_fronts 
               (if n == length numOfChildren then dpth-1 else 0)
 
 
@@ -67,14 +74,18 @@ par_solver depth board colors ends  = helper board ends depth
 -- move
 getSubSubProblemsSize :: [(Board, Fronts)] -> [Int]
 getSubSubProblemsSize sub_problems =
-  map (\(b,f) -> foldl (\s l -> s + (length l)) 0 (getNextMoves b f) ) sub_problems
+  map (\(b,f) -> foldl (\s l -> s + (length l)) 0 (getNextMoves b f) ) 
+    sub_problems
   -- map (\(b,f) -> length $ getSubProblems b f) sub_problems
 
 getSubProblems :: Board -> Fronts -> [(Board, Fronts)]
 getSubProblems board fronts 
   | length nextMoves == 0 = []
-  | length moves == 0     = [(makeMove board best_pos best_pos, M.delete best_char fronts)]
-  | otherwise = map (\nxt -> ((makeMove board best_pos nxt), (advanceFront fronts best_char best_pos nxt)) ) moves
+  | length moves == 0     = [(makeMove board best_pos best_pos, 
+                              M.delete best_char fronts)]
+  | otherwise = map (\nxt -> ((makeMove board best_pos nxt), 
+                              (advanceFront fronts best_char best_pos nxt)) ) 
+                  moves
   where nextMoves = getNextMoves board fronts
         (best_pos@(i,j), moves) = getShortestMove nextMoves
         best_char = board ! i ! j
@@ -119,32 +130,38 @@ isSolved board colors ends
 
 getEnds :: Board -> M.Map Char [Pos]
 getEnds board = foldl (helper) M.empty [0.. (V.length $ board)-1] 
-  where helper boardMap i = foldl (helper2) boardMap [0.. V.length (board ! i) - 1]
+  where helper boardMap i = foldl (helper2) boardMap 
+                              [0.. V.length (board ! i) - 1]
           where helper2 m j = 
                   if is_end then 
                     M.insertWith (++) (board ! i ! j) [(i,j)] m
                   else
                     m
                   where 
-                    is_end = (length $ filter ((==) (board ! i !? j)) (neighbors (i,j) board)) <= 1
+                    is_end = (length $ filter ((==) (board ! i !? j)) 
+                              (neighbors (i,j) board)) <= 1
 
 validPath :: Board -> Pos -> Pos -> Bool
 validPath board (i,j) end = helper (fst $ head first_step) (i,j) 
   where 
         cur_char = board ! i ! j
-        first_step = filter (\(_,c) -> c == cur_char) (neighbors_idxs (i,j) board)
+        first_step = filter (\(_,c) -> c == cur_char) 
+                        (neighbors_idxs (i,j) board)
         helper cur_pos p  
                 | cur_pos == end = True
                 | length nextStep /= 1 = False
                 | otherwise = helper (fst $ head nextStep) cur_pos 
           where nextStep = 
-                  filter (\(idx, c) -> (c == cur_char) && idx /= p) (neighbors_idxs cur_pos board)
+                  filter (\(idx, c) -> (c == cur_char) && idx /= p) 
+                      (neighbors_idxs cur_pos board)
 
 
 
 neighbors_idxs :: Pos -> Board -> [(Pos, Char)]
-neighbors_idxs (i,j) board = map (\(p,m) -> (p, fromJust m)) $ filter (\a -> isJust (snd a)) tmp
- where tmp = zip ([(i, j-1), (i-1, j), (i,j+1), (i+1,j)]) (neighbors (i,j) board)
+neighbors_idxs (i,j) board = map (\(p,m) -> (p, fromJust m)) $ 
+                              filter (\a -> isJust (snd a)) tmp
+ where tmp = zip ([(i, j-1), (i-1, j), (i,j+1), (i+1,j)]) 
+              (neighbors (i,j) board)
 
 -- returns the neigbors of the color at (i,j)
 neighbors :: Pos -> Board -> [Maybe Char]
